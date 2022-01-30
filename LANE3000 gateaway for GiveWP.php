@@ -108,6 +108,9 @@
     
     }
 
+    add_action( 'give_lane3000_cc_form', 'give_lane3000_standard_billing_fields' );
+
+
 
     // change the lane3000_for_give prefix to avoid collisions with other functions.
     function lane3000_for_give_process_lane3000TPE_donation( $posted_data ) {
@@ -162,7 +165,14 @@
             // Do the actual payment processing using the custom payment gateway API. To access the GiveWP settings, use give_get_option() 
             // as a reference, this pulls the API key entered above: give_get_option('lane3000_for_give_lane3000TPE_api_key')
 
-            wp_redirect("http://localhost:8080");
+            function getSuccessPageURL() {
+                $url = get_permalink(absint(give_get_option('success_page')));
+                return str_replace( ['http:', 'https:'], '', $url );
+            }
+
+            $successPage = getSuccessPageURL();
+
+            wp_redirect("http://localhost:8080?redirectURL=$successPage");
 
         } else {
 
