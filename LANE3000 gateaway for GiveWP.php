@@ -83,11 +83,6 @@
         return $settings;
     }
 
-    add_filter( 'give_payment_gateways', 'lane3000_for_give_register_payment_method' );
-    add_filter( 'give_get_sections_gateways', 'lane3000_for_give_register_payment_gateway_sections' );
-    add_filter( 'give_get_settings_gateways', 'lane3000_for_give_register_payment_gateway_setting_fields' );
-
-
     function give_lane3000_standard_billing_fields( $form_id ) {
     
         printf(
@@ -108,7 +103,7 @@
     
     }
 
-    add_action( 'give_lane3000_cc_form', 'give_lane3000_standard_billing_fields' );
+    
 
 
 
@@ -181,8 +176,12 @@
         } // End if().
     }
 
+    
+    add_filter( 'give_payment_gateways', 'lane3000_for_give_register_payment_method' );
+    add_filter( 'give_get_sections_gateways', 'lane3000_for_give_register_payment_gateway_sections' );
+    add_filter( 'give_get_settings_gateways', 'lane3000_for_give_register_payment_gateway_setting_fields' );
+    add_action( 'give_lane3000_cc_form', 'give_lane3000_standard_billing_fields' );
     // change the lane3000_for_give prefix to avoid collisions with other functions.
     add_action( 'give_gateway_lane3000', 'lane3000_for_give_process_lane3000TPE_donation' );
-    
 
  ?>
