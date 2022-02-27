@@ -162,12 +162,16 @@
 
             function getSuccessPageURL() {
                 $url = get_permalink(absint(give_get_option('success_page')));
-                return str_replace( ['http:', 'https:'], '', $url );
+                return str_replace( 'http:', 'https:', $url );
             }
 
-            $successPage = getSuccessPageURL();
+            $successPage = urlencode(getSuccessPageURL() . "&donationId=$donation_id");
 
-            wp_redirect("http://localhost:8080?redirectURL=$successPage");
+            //$test = give_get_success_page_uri();
+            //$test = give_get_failed_transaction_uri();
+            //$test = add_query_arg('give-listener', 'IPN', home_url('index.php'));
+
+            wp_redirect("http://localhost:8080?successPage=$successPage&donationId=$donation_id");
 
         } else {
 
@@ -176,6 +180,53 @@
         } // End if().
     }
 
+
+    function give_listen_for_lane3000_ipn() {
+
+        
+        if ( isset( $_GET['transactionStatus'] ) && 'success' === $_GET['transactionStatus'] && isset( $_GET['transactionId'] )&& is_int($_GET['transactionId']) && isset( $_GET['donationId'] ) && is_int($_GET['donationId'])  ) {
+
+            $url = 'http://localhost:8080/verify';
+            $response = wp_remote_post( $url, array(
+                'method'      => 'POST',
+                'timeout'     => 45,
+                'redirection' => 5,
+                'httpversion' => '1.0',
+                'blocking'    => true,
+                'headers'     => array(),
+                'body'        => array(
+                    'transactionId' => $_GET['transactionId']
+                )
+                )
+            );
+
+            give_update_payment_status( $donationId, 'publish' );
+            wp_send_json_success('{"toto":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx"}');
+        
+        }
+
+        //if (isset( $_GET('transactionStatus') )  && 'failed' === $_GET['transactionStatus']) {
+            //faire un truc
+        //}
+        
+    }
+
+    function give_process_lane3000_ipn() {
+
+        /*
+        // Check the request method is POST.
+        if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' !== $_SERVER['REQUEST_METHOD'] ) {
+            return;
+        }
+
+        wp_send_json_success('{"toto":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx"}');
+        */
+
+        return true;
+    }
+    
+    
+
     
     add_filter( 'give_payment_gateways', 'lane3000_for_give_register_payment_method' );
     add_filter( 'give_get_sections_gateways', 'lane3000_for_give_register_payment_gateway_sections' );
@@ -183,5 +234,12 @@
     add_action( 'give_lane3000_cc_form', 'give_lane3000_standard_billing_fields' );
     // change the lane3000_for_give prefix to avoid collisions with other functions.
     add_action( 'give_gateway_lane3000', 'lane3000_for_give_process_lane3000TPE_donation' );
+    add_action( 'init', 'give_listen_for_lane3000_ipn' );
+    //add_action( 'give_verify_lane3000_ipn', 'give_process_lane3000_ipn' );
+
+
+
+
+    
 
  ?>
