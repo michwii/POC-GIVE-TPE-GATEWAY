@@ -164,14 +164,19 @@
                 $url = get_permalink(absint(give_get_option('success_page')));
                 return str_replace( 'http:', 'https:', $url );
             }
+            function getFailurePageURL() {
+                $url = get_permalink(absint(give_get_option('failure_page')));
+                return str_replace( 'http:', 'https:', $url );
+            }
 
-            $successPage = urlencode(getSuccessPageURL() . "&donationId=$donation_id");
+            $successPage = urlencode(getSuccessPageURL() . "?donationId=$donation_id");
+            $failurePage = urlencode(getFailurePageURL() . "?donationId=$donation_id");
 
             //$test = give_get_success_page_uri();
             //$test = give_get_failed_transaction_uri();
             //$test = add_query_arg('give-listener', 'IPN', home_url('index.php'));
 
-            wp_redirect("http://localhost:8080?successPage=$successPage&donationId=$donation_id");
+            wp_redirect("http://localhost:8080?successPageURL=$successPage&failurePageURL=$failurePage&donationId=$donation_id");
 
         } else {
 
@@ -184,8 +189,9 @@
     function give_listen_for_lane3000_ipn() {
 
         
-        if ( isset( $_GET['transactionStatus'] ) && 'success' === $_GET['transactionStatus'] && isset( $_GET['transactionId'] )&& is_int($_GET['transactionId']) && isset( $_GET['donationId'] ) && is_int($_GET['donationId'])  ) {
-
+        if ( isset( $_GET['transactionStatus'] ) && 'success' === $_GET['transactionStatus'] && isset($_GET['transactionId']) && isset($_GET['donationId']) ){    
+        
+            /*
             $url = 'http://localhost:8080/verify';
             $response = wp_remote_post( $url, array(
                 'method'      => 'POST',
@@ -199,15 +205,21 @@
                 )
                 )
             );
+            */
+
+            $donationId = $_GET['donationId'];
 
             give_update_payment_status( $donationId, 'publish' );
-            wp_send_json_success('{"toto":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx"}');
+            wp_send_json_success('{"titi":"successssssssssssss"}');
         
         }
 
-        //if (isset( $_GET('transactionStatus') )  && 'failed' === $_GET['transactionStatus']) {
+        if ( isset( $_GET['transactionStatus'] ) && 'failed' === $_GET['transactionStatus'] && isset($_GET['donationId']) ){    
             //faire un truc
-        //}
+            $donationId = $_GET['donationId'];
+            give_update_payment_status( $donationId, 'failed' );
+            wp_send_json_success('{"toto":"faileddddddddddd"}');
+        }
         
     }
 
@@ -225,6 +237,24 @@
         return true;
     }
     
+    //Allow to have CORS requests coming from the LAN application
+    function initCors( $value ) {
+        $origin_url = '*';
+      
+        // Check if production environment or not
+        if (ENVIRONMENT === 'production') {
+          $origin_url = 'http://localhost:8080';
+        }
+      
+        header( 'Access-Control-Allow-Origin: ' . $origin_url );
+        header( 'Access-Control-Allow-Methods: GET' );
+        header( 'Access-Control-Allow-Credentials: true' );
+        return $value;
+    }
+    add_action( 'rest_api_init', function() {
+        remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
+        add_filter( 'rest_pre_serve_request', initCors);
+    }, 15 );
     
 
     
