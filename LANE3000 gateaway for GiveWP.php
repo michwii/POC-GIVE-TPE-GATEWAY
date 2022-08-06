@@ -67,8 +67,15 @@
                 $settings[] = array(
                     'name' => __( 'LANE3000 ID', 'give-square' ),
                     'desc' => __( 'Enter your LANE3000 ID.', 'lane3000-for-give' ),
-                    'id'   => 'lane3000_for_give_lane3000_api_key',
+                    'id'   => 'lane3000_for_give_lane3000_laneId',
                     'type' => 'text',
+                );
+
+                $settings[] = array(
+                    'name' => __( 'Password', 'give-square' ),
+                    'desc' => __( 'Enter your api key.', 'lane3000-for-give' ),
+                    'id'   => 'lane3000_for_give_lane3000_api_key',
+                    'type' => 'api_key',
                 );
 
                 $settings[] = array(
@@ -175,8 +182,7 @@
             //$test = give_get_success_page_uri();
             //$test = give_get_failed_transaction_uri();
             //$test = add_query_arg('give-listener', 'IPN', home_url('index.php'));
-
-            wp_redirect("http://localhost:8080?successPageURL=$successPage&failurePageURL=$failurePage&donationId=$donation_id");
+            wp_redirect("http://localhost:8080?successPageURL=$successPage&failurePageURL=$failurePage&donationId=$donation_id&donationAmount=$donation_amount");
 
         } else {
 
@@ -188,75 +194,37 @@
 
     function give_listen_for_lane3000_ipn() {
 
-        
-        if ( isset( $_GET['transactionStatus'] ) && 'success' === $_GET['transactionStatus'] && isset($_GET['transactionId']) && isset($_GET['donationId']) ){    
-        
-            /*
-            $url = 'http://localhost:8080/verify';
-            $response = wp_remote_post( $url, array(
-                'method'      => 'POST',
-                'timeout'     => 45,
-                'redirection' => 5,
-                'httpversion' => '1.0',
-                'blocking'    => true,
-                'headers'     => array(),
-                'body'        => array(
-                    'transactionId' => $_GET['transactionId']
-                )
-                )
-            );
-            */
+        if(isset( $_GET['donationStatus'] ) ){
+            $authorizationHeaderUser = sanitize_text_field($_SERVER['PHP_AUTH_USER']);
+            $authorizationHeaderPassword = sanitize_text_field($_SERVER['PHP_AUTH_PW']);
+            $authorizationHeader = $authorizationHeaderUser . ":" . $authorizationHeaderPassword;
 
-            $donationId = $_GET['donationId'];
+            if($authorizationHeader === sanitize_text_field(base64_decode(give_get_option('lane3000_for_give_lane3000_api_key')))){
 
-            give_update_payment_status( $donationId, 'publish' );
-            wp_send_json_success('{"titi":"successssssssssssss"}');
-        
-        }
+                if ( isset( $_GET['donationStatus'] ) && 'publish' === sanitize_text_field($_GET['donationStatus']) && isset($_GET['donationId']) && isset($_GET['donationAmount'])){   
+                    
+                    $donationId = sanitize_text_field($_GET['donationId']);
+                    $donationAmount = floatval(sanitize_text_field($_GET['donationAmount']));
+                    $originalPaymentAmount = floatval(give_get_payment_amount($donationId));
 
-        if ( isset( $_GET['transactionStatus'] ) && 'failed' === $_GET['transactionStatus'] && isset($_GET['donationId']) ){    
-            //faire un truc
-            $donationId = $_GET['donationId'];
-            give_update_payment_status( $donationId, 'failed' );
-            wp_send_json_success('{"toto":"faileddddddddddd"}');
-        }
-        
+                    if($donationAmount === $originalPaymentAmount){
+                        give_update_payment_status( $donationId, 'publish' );
+                        wp_send_json_success('Donation successfully published');
+                    }else{
+                        wp_send_json_error("Not Authorized, Hacking tentative.", 403);
+                    }
+         
+                }else{
+                    $donationId = sanitize_text_field($_GET['donationId']);
+                    give_update_payment_status( $donationId, 'failed' );
+                    wp_send_json_success('Donation registred as failed');
+                }
+                
+            }else{
+                wp_send_json_error("Not Authorized, please verify your api-key.", 401);
+            }
+        }        
     }
-
-    function give_process_lane3000_ipn() {
-
-        /*
-        // Check the request method is POST.
-        if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' !== $_SERVER['REQUEST_METHOD'] ) {
-            return;
-        }
-
-        wp_send_json_success('{"toto":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx"}');
-        */
-
-        return true;
-    }
-    
-    //Allow to have CORS requests coming from the LAN application
-    function initCors( $value ) {
-        $origin_url = '*';
-      
-        // Check if production environment or not
-        if (ENVIRONMENT === 'production') {
-          $origin_url = 'http://localhost:8080';
-        }
-      
-        header( 'Access-Control-Allow-Origin: ' . $origin_url );
-        header( 'Access-Control-Allow-Methods: GET' );
-        header( 'Access-Control-Allow-Credentials: true' );
-        return $value;
-    }
-    add_action( 'rest_api_init', function() {
-        remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
-        add_filter( 'rest_pre_serve_request', initCors);
-    }, 15 );
-    
-
     
     add_filter( 'give_payment_gateways', 'lane3000_for_give_register_payment_method' );
     add_filter( 'give_get_sections_gateways', 'lane3000_for_give_register_payment_gateway_sections' );
@@ -265,7 +233,6 @@
     // change the lane3000_for_give prefix to avoid collisions with other functions.
     add_action( 'give_gateway_lane3000', 'lane3000_for_give_process_lane3000TPE_donation' );
     add_action( 'init', 'give_listen_for_lane3000_ipn' );
-    //add_action( 'give_verify_lane3000_ipn', 'give_process_lane3000_ipn' );
 
 
 
